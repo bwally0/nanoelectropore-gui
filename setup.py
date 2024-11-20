@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 setup(
     name="nanoelectropore-gui",
     version="0.1.0",
-    description="GUI controls and interface for NanoElectroPore",
+    description="GUI controls and interface for Quantum-NanoElectroPore collection device.",
     author="Brendan Waldrop",
     author_email="bwwaldr1@asu.edu",
     packages=find_packages(),

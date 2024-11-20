@@ -1,3 +1,5 @@
+_context_instance = None
+
 class ApplicationContext():
     def __init__(self) -> None:
         self._host = None
@@ -26,3 +28,9 @@ class ApplicationContext():
             raise ValueError("Control bits can only be 0 or 1.")
         
         self._control_bits = int(''.join(map(str, bits)), 2)
+
+def get_app_context() -> ApplicationContext:
+    global _context_instance
+    if _context_instance is None:
+        _context_instance = ApplicationContext()
+    return _context_instance

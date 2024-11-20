@@ -1,15 +1,19 @@
-# Quantum-NanoElectroPore GUI Interface
+# Quantum-NanoElectroPore Controller GUI Interface
 ## Install Instructions
-1. Extract project files or download from github.
+1. Extract project files or download from GitHub.
 ``` bash
 git clone https://github.com/bwally0/nanoelectropore-gui.git
 cd ./nanoelectropore-gui
 ```
-2. Install `nanogui` package.
+2. Install required packages.
+```
+pip install -r requirements.txt
+```
+3. Install `nanogui` package.
 ``` bash
 pip install .
 ```
-3. Run `nanogui` program.
+4. Run `nanogui` program.
 ``` bash
 nanogui
 ```

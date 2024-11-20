@@ -1,10 +1,15 @@
+from PySide6.QtCore import QObject, Signal
 _context_instance = None
 
-class ApplicationContext():
+class ApplicationContext(QObject):
+    message_changed = Signal(str)
+
     def __init__(self) -> None:
+        super().__init__()
         self._host = None
         self._port = None
         self._control_bits = 0b00000000
+        self._message = "Server stopped."
 
     def get_host(self) -> str:
         return self._host
@@ -28,6 +33,13 @@ class ApplicationContext():
             raise ValueError("Control bits can only be 0 or 1.")
         
         self._control_bits = int(''.join(map(str, bits)), 2)
+
+    def get_message(self) -> str:
+        return self._message
+    
+    def set_message(self, message: str) -> None:
+        self._message = message
+        self.message_changed.emit(message)
 
 def get_app_context() -> ApplicationContext:
     global _context_instance

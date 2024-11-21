@@ -33,9 +33,11 @@ class TestClient:
     def _listen_for_messages(self):
         while self.running and self.client_socket:
             try:
-                response = self.client_socket.recv(1024)
+                response = self.client_socket.recv(1)
                 if response:
-                    print(f"Received: {response.decode('utf-8')}")
+                    control_bits = int.from_bytes(response, byteorder="big")
+                    binary_representation = f"0b{control_bits:08b}"
+                    print(f"Received control bits: {binary_representation}")
                 else:
                     print("Server closed the connection.")
                     self.close_connection()
@@ -63,5 +65,5 @@ if __name__ == "__main__":
         time.sleep(5)
         client.send_message("Hello, Server!")
 
-        time.sleep(5)
+        time.sleep(60)
         client.close_connection()

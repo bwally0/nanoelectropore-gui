@@ -85,7 +85,6 @@ class TCPServer:
             self._client_socket.send(control_bits.to_bytes(1, byteorder="big"))
 
             binary_representation = f"0b{control_bits:08b}"
-            self._client_socket.send(control_bits.to_bytes(1, byteorder="big"))
             print(f"Sent control bits: {binary_representation}")
             self._context.set_message(f"Sent control bits: {binary_representation}")
         else:

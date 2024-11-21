@@ -17,14 +17,14 @@ class ConnectionPanelWidget(QWidget):
         host_layout = QHBoxLayout()
         self.host_label = QLabel("Host:")
         self.host_input = QLineEdit()
-        self.host_input.setPlaceholderText("Enter host (e.g. 127.0.0.1)")
+        self.host_input.setPlaceholderText("e.g. 127.0.0.1")
         host_layout.addWidget(self.host_label)
         host_layout.addWidget(self.host_input)
 
         port_layout = QHBoxLayout()
         self.port_label = QLabel("Port: ")
         self.port_input = QLineEdit()
-        self.port_input.setPlaceholderText("Enter port (e.g. 8080)")
+        self.port_input.setPlaceholderText("e.g. 8888")
         port_layout.addWidget(self.port_label)
         port_layout.addWidget(self.port_input)
 
@@ -45,9 +45,11 @@ class ConnectionPanelWidget(QWidget):
         self.setLayout(main_layout)
 
 class ControlPanelWidget(QWidget):
-    def __init__(self):
+    def __init__(self, update_callback):
         super().__init__()
         self.setFixedSize(300, 300)
+        self.update_callback = update_callback
+
         main_layout = QVBoxLayout()
         main_layout.addWidget(QLabel("Control Panel"))
 
@@ -69,9 +71,18 @@ class ControlPanelWidget(QWidget):
 
         ### Update Button ###
         self.update_button = QPushButton("Update")
+        self.update_button.clicked.connect(self._on_update_clicked)
         main_layout.addWidget(self.update_button)
 
         self.setLayout(main_layout)
+    
+    def get_control_bits(self):
+        return [int(combo_box.currentText()) for combo_box in self.signal_selectors][::-1]
+    
+    def _on_update_clicked(self):
+        control_bits = self.get_control_bits()
+        if self.update_callback:
+            self.update_callback(control_bits)
 
 class DataPanelWidget(QWidget):
     def __init__(self):
@@ -106,7 +117,7 @@ class MainWindow(QMainWindow):
         self._server = server
         
         self.setFixedSize(940, 600)
-        self.setWindowTitle("NanoElectroPore GUI")
+        self.setWindowTitle("Quantum-NanoElectroPore Controller GUI")
 
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -126,7 +137,8 @@ class MainWindow(QMainWindow):
         left_panel = QVBoxLayout()
         self._connection_panel_widget = ConnectionPanelWidget()
         left_panel.addWidget(self._connection_panel_widget)
-        self._control_panel_widget = ControlPanelWidget()
+
+        self._control_panel_widget = ControlPanelWidget(self.update_control_bits)
         left_panel.addWidget(self._control_panel_widget)
 
         right_panel = QVBoxLayout()
@@ -137,17 +149,50 @@ class MainWindow(QMainWindow):
         main_layout.addLayout(left_panel)
         main_layout.addLayout(right_panel)
 
+        ### Message Handling ###
         self.statusBar().showMessage(self._context.get_message())
         self._context.message_changed.connect(self.statusBar().showMessage)
 
+        ### Connect Buttons ###
+        self._connection_panel_widget.start_button.clicked.connect(self.start_server)
+        self._connection_panel_widget.stop_button.clicked.connect(self.stop_server)
+
+    def start_server(self) -> None:
+        host = self._connection_panel_widget.host_input.text()
+        port = int(self._connection_panel_widget.port_input.text())
+
+        if not host or not port:
+            self._context.set_message("Please set the host and port.")
+            return
+        
+        try:
+            self._context.set_host(host)
+            self._context.set_port(port)
+            self._server.start_server()
+
+            self._connection_panel_widget.start_button.setEnabled(False)
+            self._connection_panel_widget.stop_button.setEnabled(True)
+        except ValueError:
+            self._context.set_message("Invalid port number.")
+        except Exception as e:
+            print(str(e))
+            self._context.set_message(str(e))
+
+    def stop_server(self) -> None:
+        self._server.stop_server()
+        self._connection_panel_widget.start_button.setEnabled(True)
+        self._connection_panel_widget.stop_button.setEnabled(False)
+
+    def update_control_bits(self, control_bits: list[int]):
+        try:
+            self._context.set_control_bits(control_bits)
+            self._server.send_control_bits()
+        except Exception as e:
+            print(str(e))
+            self._context.set_message(str(e))
 
 def run():
     app = QApplication(sys.argv)
-    app.setStyleSheet("""
-        #connectionPanel, #controlPanel{
-            border: 1px solid lightgrey;
-        }
-    """)
     context = get_app_context()
     server = TCPServer(context)
     window = MainWindow(context, server)

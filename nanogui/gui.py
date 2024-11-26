@@ -7,7 +7,8 @@ from nanogui.context import ApplicationContext, get_app_context
 from nanogui.server import TCPServer
 
 class ConnectionPanelWidget(QWidget):
-    def __init__(self):
+    """Widget for setting up the connection to the server."""
+    def __init__(self) -> None:
         super().__init__()
         self.setFixedSize(300, 120)
         main_layout = QVBoxLayout()
@@ -45,7 +46,8 @@ class ConnectionPanelWidget(QWidget):
         self.setLayout(main_layout)
 
 class ControlPanelWidget(QWidget):
-    def __init__(self, update_callback):
+    """Widget for setting the control bits."""
+    def __init__(self, update_callback) -> None:
         super().__init__()
         self.setFixedSize(300, 300)
         self.update_callback = update_callback
@@ -76,16 +78,23 @@ class ControlPanelWidget(QWidget):
 
         self.setLayout(main_layout)
     
-    def get_control_bits(self):
+    def get_control_bits(self) -> list[int]:
+        """Get the control bits from the signal selectors.
+        
+        returns:
+            list[int]: List of control bits.
+        """
         return [int(combo_box.currentText()) for combo_box in self.signal_selectors][::-1]
     
-    def _on_update_clicked(self):
+    def _on_update_clicked(self) -> None:
+        """Update the control bits and call the update callback."""
         control_bits = self.get_control_bits()
         if self.update_callback:
             self.update_callback(control_bits)
 
 class DataPanelWidget(QWidget):
-    def __init__(self):
+    """Widget for displaying data."""
+    def __init__(self) -> None:
         super().__init__()
         self.setFixedSize(600, 540)
         
@@ -103,7 +112,8 @@ class DataPanelWidget(QWidget):
 
         self.plot_test_data()
 
-    def plot_test_data(self):
+    def plot_test_data(self) -> None:
+        """Plot some test data on the plot widget."""
         x = np.linspace(0, 20, 1000)
         y = 2.5 * np.sin(0.1 * x) + 4.5 + np.random.normal(-0.5, 0.5, size=x.shape)
 
@@ -111,6 +121,12 @@ class DataPanelWidget(QWidget):
 
 
 class MainWindow(QMainWindow):
+    """Main application window.
+    
+    params:
+        context (ApplicationContext): Application context.
+        server (TCPServer): TCPServer instance.
+    """
     def __init__(self, context: ApplicationContext, server: TCPServer) -> None:
         super().__init__()
         self._context = context
@@ -158,6 +174,7 @@ class MainWindow(QMainWindow):
         self._connection_panel_widget.stop_button.clicked.connect(self.stop_server)
 
     def start_server(self) -> None:
+        """Start the server with the host and port specified in the connection panel."""
         host = self._connection_panel_widget.host_input.text()
         port = int(self._connection_panel_widget.port_input.text())
 
@@ -179,11 +196,17 @@ class MainWindow(QMainWindow):
             self._context.set_message(str(e))
 
     def stop_server(self) -> None:
+        """Stop the server."""
         self._server.stop_server()
         self._connection_panel_widget.start_button.setEnabled(True)
         self._connection_panel_widget.stop_button.setEnabled(False)
 
     def update_control_bits(self, control_bits: list[int]):
+        """Update the control bits in context and send to client.
+        
+        params:
+            control_bits: List of control bits.
+        """
         try:
             self._context.set_control_bits(control_bits)
             self._server.send_control_bits()
@@ -191,7 +214,8 @@ class MainWindow(QMainWindow):
             print(str(e))
             self._context.set_message(str(e))
 
-def run():
+def run() -> None:
+    """Run the application."""
     app = QApplication(sys.argv)
     context = get_app_context()
     server = TCPServer(context)

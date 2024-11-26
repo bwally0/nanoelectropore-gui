@@ -3,6 +3,11 @@ import threading
 from nanogui.context import ApplicationContext
 
 class TCPServer:
+    """Simple TCP server for sending control bits to a client.
+    
+    params:
+        context (ApplicationContext): The application context.
+    """
     def __init__(self, context: ApplicationContext) -> None:
         self._context = context
         self._server_socket = None
@@ -11,6 +16,7 @@ class TCPServer:
         self._running = False
     
     def start_server(self) -> None:
+        """Start server given host and port from context."""
         host = self._context.get_host()
         port = self._context.get_port()
 
@@ -29,6 +35,7 @@ class TCPServer:
         threading.Thread(target=self._accept_connections, daemon=True).start()
 
     def _accept_connections(self) -> None:
+        """Accept incoming connections."""
         while self._running:
             try:
                 if not self._client_socket:
@@ -47,6 +54,7 @@ class TCPServer:
 
 
     def _handle_client(self) -> None:
+        """Handle client connection and incoming messages."""
         while self._running and self._client_socket:
             try:
                 data = self._client_socket.recv(1024)
@@ -64,6 +72,7 @@ class TCPServer:
         self._cleanup_client()
 
     def _cleanup_client(self) -> None:
+        """Cleanup after client disconnects."""
         if self._client_socket:
             try:
                 self._client_socket.close()
@@ -75,6 +84,7 @@ class TCPServer:
         self._context.set_message("Ready for a new connection.")
 
     def send_control_bits(self) -> None:
+        """Send control bits to client."""
         if not self._running:
             print("Server not running.")
             self._context.set_message("Server not running.")
@@ -92,6 +102,7 @@ class TCPServer:
             self._context.set_message("Client not connected.")
 
     def stop_server(self) -> None:
+        """Stop the server."""
         self._running = False
         if self._client_socket:
             self._client_socket.close()

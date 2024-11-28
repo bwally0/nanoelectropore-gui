@@ -3,7 +3,7 @@ import threading
 from nanogui.context import ApplicationContext
 
 class TCPServer:
-    """Simple TCP server for sending control bits to a client.
+    """TCP server for sending control bits to a client.
     
     params:
         context (ApplicationContext): The application context.

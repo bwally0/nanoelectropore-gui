@@ -1,4 +1,5 @@
 import socket
+import struct
 import threading
 from nanogui.context import ApplicationContext
 
@@ -57,17 +58,20 @@ class TCPServer:
         """Handle client connection and incoming messages."""
         while self._running and self._client_socket:
             try:
-                data = self._client_socket.recv(1024)
+                data = self._client_socket.recv(32)
                 if not data:
                     print("Client disconnected.")
                     self._context.set_message("Client disconnected.")
                     break
 
-                print(f"Received: {data.decode()}")
+                i16_list = list(struct.unpack('>16h', data))
+                print(f"Received integers: {i16_list}")
             except ConnectionResetError:
                 print("Client connection reset.")
                 self._context.set_message("Client connection reset.")
                 break
+            except struct.error as e:
+                print(f"Error decoding data: {e}")
 
         self._cleanup_client()
 

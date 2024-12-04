@@ -19,6 +19,7 @@ class ConnectionPanelWidget(QWidget):
         self.host_label = QLabel("Host:")
         self.host_input = QLineEdit()
         self.host_input.setPlaceholderText("e.g. 127.0.0.1")
+        self.host_input.setText("127.0.0.1")
         host_layout.addWidget(self.host_label)
         host_layout.addWidget(self.host_input)
 
@@ -26,6 +27,7 @@ class ConnectionPanelWidget(QWidget):
         self.port_label = QLabel("Port: ")
         self.port_input = QLineEdit()
         self.port_input.setPlaceholderText("e.g. 8888")
+        self.port_input.setText("8888")
         port_layout.addWidget(self.port_label)
         port_layout.addWidget(self.port_input)
 
@@ -103,14 +105,17 @@ class DataPanelWidget(QWidget):
 
         ### Plot Widget ###
         self.plot_widget = pg.PlotWidget()
-        self.plot_widget.setLabel("left", "Conductance (G_o)")
-        self.plot_widget.setLabel("bottom", "Time (s)")
+        self.plot_widget.setLabel("left", "Analog Value")
+        self.plot_widget.setLabel("bottom", "Time (us)")
         main_layout.addWidget(self.plot_widget)
+        
+        self.curve = self.plot_widget.plot(pen=pg.mkPen(color=(255, 0, 0), width=2))
 
-        self.plot_widget.setYRange(0, 10)
-        self.plot_widget.setXRange(0, 20)
+    def update_plot(self, x_data: list[int], y_data: list[int]) -> None:
+        if len(x_data) > 0:
+            self.plot_widget.setXRange(min(x_data), max(x_data), padding=0.1)
 
-        self.plot_test_data()
+        self.curve.setData(x=x_data, y=y_data)
 
     def plot_test_data(self) -> None:
         """Plot some test data on the plot widget."""
@@ -131,6 +136,9 @@ class MainWindow(QMainWindow):
         super().__init__()
         self._context = context
         self._server = server
+
+        self.time_data = []
+        self.analog_data = []
         
         self.setFixedSize(940, 600)
         self.setWindowTitle("Quantum-NanoElectroPore Controller GUI")
@@ -172,6 +180,17 @@ class MainWindow(QMainWindow):
         ### Connect Buttons ###
         self._connection_panel_widget.start_button.clicked.connect(self.start_server)
         self._connection_panel_widget.stop_button.clicked.connect(self.stop_server)
+
+        self._server.signals.data_received.connect(self.update_graph)
+
+    def update_graph(self, data: list[int]) -> None:
+        new_analog_values = data[::2]
+        new_time_values = data[1::2] 
+
+        self.analog_data.extend(new_analog_values)
+        self.time_data.extend(new_time_values)
+
+        self._data_panel_widget.update_plot(self.time_data, self.analog_data)
 
     def start_server(self) -> None:
         """Start the server with the host and port specified in the connection panel."""

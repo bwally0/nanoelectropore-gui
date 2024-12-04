@@ -1,7 +1,11 @@
 import socket
 import struct
 import threading
+from PySide6.QtCore import QObject, Signal
 from nanogui.context import ApplicationContext
+
+class ServerSignals(QObject):
+    data_received = Signal(list)
 
 class TCPServer:
     """TCP server for sending control bits to a client.
@@ -15,6 +19,7 @@ class TCPServer:
         self._client_socket = None
         self._client_address = None
         self._running = False
+        self.signals = ServerSignals()
     
     def start_server(self) -> None:
         """Start server given host and port from context."""
@@ -58,14 +63,19 @@ class TCPServer:
         """Handle client connection and incoming messages."""
         while self._running and self._client_socket:
             try:
-                data = self._client_socket.recv(32)
+                data = self._client_socket.recv(64)
                 if not data:
                     print("Client disconnected.")
                     self._context.set_message("Client disconnected.")
                     break
-
-                i16_list = list(struct.unpack('>16h', data))
-                print(f"Received integers: {i16_list}")
+                
+                i16_list = list(struct.unpack('>32h', data))
+                # print(f"Received integers: {i16_list}")
+                self.signals.data_received.emit(i16_list)
+            except ConnectionAbortedError:
+                print("Connection aborted by host.")
+                self._context.set_message("Connection aborted by server.")
+                break
             except ConnectionResetError:
                 print("Client connection reset.")
                 self._context.set_message("Client connection reset.")
@@ -82,6 +92,8 @@ class TCPServer:
                 self._client_socket.close()
             except OSError:
                 pass
+
+        self.signals.data_received.emit([])
         self._client_socket = None
         self._client_address = None
         print("Ready for a new connection.")
@@ -108,6 +120,7 @@ class TCPServer:
     def stop_server(self) -> None:
         """Stop the server."""
         self._running = False
+        self.signals.data_received.emit([])
         if self._client_socket:
             self._client_socket.close()
         if self._server_socket:

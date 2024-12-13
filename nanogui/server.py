@@ -63,13 +63,13 @@ class TCPServer:
         """Handle client connection and incoming messages."""
         while self._running and self._client_socket:
             try:
-                data = self._client_socket.recv(64)
+                data = self._client_socket.recv(160)
                 if not data:
                     print("Client disconnected.")
                     self._context.set_message("Client disconnected.")
                     break
-                
-                i16_list = list(struct.unpack('>32h', data))
+
+                i16_list = list(struct.unpack('>80h', data))
                 # print(f"Received integers: {i16_list}")
                 self.signals.data_received.emit(i16_list)
             except ConnectionAbortedError:

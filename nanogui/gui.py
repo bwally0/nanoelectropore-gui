@@ -1,10 +1,36 @@
 import sys
-from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QLineEdit, QComboBox
+from PySide6.QtWidgets import QApplication, QMainWindow, QGridLayout, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QLineEdit, QComboBox
 from PySide6.QtGui import QAction
+from PySide6.QtCore import Qt
 import pyqtgraph as pg
 import numpy as np
 from nanogui.context import ApplicationContext, get_app_context
 from nanogui.server import TCPServer
+
+class GraphWidget(QWidget):
+    """Graph widget with label."""
+    def __init__(self, label: str) -> None:
+        super().__init__()
+        layout = QVBoxLayout()
+        self.setLayout(layout)
+
+        self.channel_label = QLabel(label)
+        self.channel_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.channel_label)
+
+        self.plot_widget = pg.PlotWidget()
+        self.plot_widget.setLabel("left", "Analog Value")
+        self.plot_widget.setLabel("bottom", "Time (us)")
+        layout.addWidget(self.plot_widget)
+
+        self.curve = self.plot_widget.plot(pen=pg.mkPen(color=(255, 0, 0), width=2))
+
+    def update_plot(self, x_data: list[int], y_data: list[int]) -> None:
+        """Update the plot with new data."""
+        if len(x_data) > 0:
+            self.plot_widget.setXRange(min(x_data), max(x_data), padding=0.1)
+
+        self.curve.setData(x=x_data, y=y_data)
 
 class ConnectionPanelWidget(QWidget):
     """Widget for setting up the connection to the server."""
@@ -98,31 +124,29 @@ class DataPanelWidget(QWidget):
     """Widget for displaying data."""
     def __init__(self) -> None:
         super().__init__()
-        self.setFixedSize(600, 540)
-        
-        main_layout = QVBoxLayout()
-        self.setLayout(main_layout)
+        layout = QGridLayout()
+        self.setLayout(layout)
 
-        ### Plot Widget ###
-        self.plot_widget = pg.PlotWidget()
-        self.plot_widget.setLabel("left", "Analog Value")
-        self.plot_widget.setLabel("bottom", "Time (us)")
-        main_layout.addWidget(self.plot_widget)
-        
-        self.curve = self.plot_widget.plot(pen=pg.mkPen(color=(255, 0, 0), width=2))
+        self.channel_a = GraphWidget("Channel A")
+        self.channel_b = GraphWidget("Channel B")
+        self.channel_c = GraphWidget("Channel C")
+        self.channel_d = GraphWidget("Channel D")
 
-    def update_plot(self, x_data: list[int], y_data: list[int]) -> None:
-        if len(x_data) > 0:
-            self.plot_widget.setXRange(min(x_data), max(x_data), padding=0.1)
+        layout.addWidget(self.channel_a, 0, 0)
+        layout.addWidget(self.channel_b, 0, 1)
+        layout.addWidget(self.channel_c, 1, 0)
+        layout.addWidget(self.channel_d, 1, 1)
 
-        self.curve.setData(x=x_data, y=y_data)
-
-    def plot_test_data(self) -> None:
-        """Plot some test data on the plot widget."""
-        x = np.linspace(0, 20, 1000)
-        y = 2.5 * np.sin(0.1 * x) + 4.5 + np.random.normal(-0.5, 0.5, size=x.shape)
-
-        self.plot_widget.plot(x, y, pen=(255, 0, 0))
+    def update_channel(self, channel: str, x_data: list[int], y_data: list[int]) -> None:
+        """Update a specific channel graph."""
+        if channel == "A":
+            self.channel_a.update_plot(x_data, y_data)
+        elif channel == "B":
+            self.channel_b.update_plot(x_data, y_data)
+        elif channel == "C":
+            self.channel_c.update_plot(x_data, y_data)
+        elif channel == "D":
+            self.channel_d.update_plot(x_data, y_data)
 
 
 class MainWindow(QMainWindow):
@@ -137,10 +161,14 @@ class MainWindow(QMainWindow):
         self._context = context
         self._server = server
 
-        self.time_data = []
-        self.analog_data = []
+        self.channel_data = {
+            "A": {"time": [], "value": []},
+            "B": {"time": [], "value": []},
+            "C": {"time": [], "value": []},
+            "D": {"time": [], "value": []},
+        }
         
-        self.setFixedSize(940, 600)
+        self.setFixedSize(1280, 980)
         self.setWindowTitle("Quantum-NanoElectroPore Controller GUI")
 
         central_widget = QWidget()
@@ -184,13 +212,26 @@ class MainWindow(QMainWindow):
         self._server.signals.data_received.connect(self.update_graph)
 
     def update_graph(self, data: list[int]) -> None:
-        new_analog_values = data[::2]
-        new_time_values = data[1::2] 
+        """Update graphs with received data."""
+        channel_a_data = data[0:16]
+        channel_b_data = data[16:32]
+        channel_c_data = data[32:48]
+        channel_d_data = data[48:64]
+        time_data = data[64:80]
 
-        self.analog_data.extend(new_analog_values)
-        self.time_data.extend(new_time_values)
+        self.channel_data["A"]["value"].extend(channel_a_data)
+        self.channel_data["B"]["value"].extend(channel_b_data)
+        self.channel_data["C"]["value"].extend(channel_c_data)
+        self.channel_data["D"]["value"].extend(channel_d_data)
+        self.channel_data["A"]["time"].extend(time_data)
+        self.channel_data["B"]["time"].extend(time_data)
+        self.channel_data["C"]["time"].extend(time_data)
+        self.channel_data["D"]["time"].extend(time_data)
 
-        self._data_panel_widget.update_plot(self.time_data, self.analog_data)
+        self._data_panel_widget.update_channel("A", self.channel_data["A"]["time"], self.channel_data["A"]["value"])
+        self._data_panel_widget.update_channel("B", self.channel_data["B"]["time"], self.channel_data["B"]["value"])
+        self._data_panel_widget.update_channel("C", self.channel_data["C"]["time"], self.channel_data["C"]["value"])
+        self._data_panel_widget.update_channel("D", self.channel_data["D"]["time"], self.channel_data["D"]["value"])
 
     def start_server(self) -> None:
         """Start the server with the host and port specified in the connection panel."""
